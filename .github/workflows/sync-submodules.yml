@@ -41,7 +41,7 @@ jobs:
       - name: Checkout Target Repository (${{ matrix.target-repo }})
         uses: actions/checkout@v4
         with:
-          repository: TU_USUARIO/${{ matrix.target-repo }}
+          repository: israchaves/${{ matrix.target-repo }}
           token: ${{ secrets.SYNC_TOKEN }}
           path: 'target-repo'
           fetch-depth: 0
@@ -75,7 +75,7 @@ jobs:
           # Verificar si hay cambios reales
           if ! git diff --staged --quiet; then
             git commit -m "chore: sync media assets to $MEDIA_ROUTE"
-            git push https://${{ secrets.SYNC_TOKEN }}@github.com/TU_USUARIO/${{ matrix.target-repo }}.git HEAD:main
+            git push https://${{ secrets.SYNC_TOKEN }}@github.com/israchaves/${{ matrix.target-repo }}.git HEAD:main
             echo "✅ Actualización exitosa en ${{ matrix.target-repo }} (Ruta: $MEDIA_ROUTE)"
           else
             echo "⏭️ Sin cambios en ${{ matrix.target-repo }}"
