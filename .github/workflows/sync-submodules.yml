@@ -15,7 +15,7 @@ jobs:
     
     steps:
       - name: Checkout media-assets (Source)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.0
         with:
           path: 'media-source'
           fetch-depth: 0
@@ -39,7 +39,7 @@ jobs:
           git config --global user.email "actions@github.com"
 
       - name: Checkout Target Repository (${{ matrix.target-repo }})
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.0
         with:
           repository: israchaves/${{ matrix.target-repo }}
           token: ${{ secrets.SYNC_TOKEN }}
