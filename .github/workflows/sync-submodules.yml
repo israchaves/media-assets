@@ -1,0 +1,83 @@
+name: Sync Media to Repos
+
+on:
+  push:
+    branches:
+      - main  # Cambia a 'master' si tu rama principal se llama así
+
+jobs:
+  sync-repos:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Lista aquí los repositorios que quieres actualizar
+        target-repo: ['lectures-material', 'israchaves.github.io']
+    
+    steps:
+      - name: Checkout media-assets (Source)
+        uses: actions/checkout@v4
+        with:
+          path: 'media-source'
+          fetch-depth: 0
+
+      - name: Read Routes Configuration
+        id: config
+        run: |
+          # Leer el archivo routes.json y extraer la ruta para este repo específico
+          ROUTE=$(jq -r '.["${{ matrix.target-repo }}"]' media-source/routes.json)
+          echo "Target: ${{ matrix.target-repo }}"
+          echo "Route: $ROUTE"
+          if [ "$ROUTE" == "null" ]; then
+            echo "Error: No se encontró una ruta para ${{ matrix.target-repo }} en routes.json"
+            exit 1
+          fi
+          echo "MEDIA_ROUTE=$ROUTE" >> $GITHUB_ENV
+
+      - name: Setup Git User
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Checkout Target Repository (${{ matrix.target-repo }})
+        uses: actions/checkout@v4
+        with:
+          repository: TU_USUARIO/${{ matrix.target-repo }}
+          token: ${{ secrets.SYNC_TOKEN }}
+          path: 'target-repo'
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Sync Media to Correct Path
+        run: |
+          cd target-repo
+          
+          # 1. Eliminar la carpeta antigua en la ruta específica (si existe)
+          # Usamos rm -rf con cuidado, solo en la ruta definida
+          if [ -d "$MEDIA_ROUTE" ]; then
+            echo "Eliminando versión anterior en: $MEDIA_ROUTE"
+            rm -rf "$MEDIA_ROUTE"
+          fi
+          
+          # 2. Asegurar que los directorios padres existan (ej. si la ruta es assets/media)
+          mkdir -p "$(dirname "$MEDIA_ROUTE")"
+          
+          # 3. Copiar el contenido nuevo desde media-source a la ruta correcta
+          # Copiamos el CONTENIDO (.), no la carpeta media-source entera, para evitar anidación
+          echo "Copiando nuevos archivos a: $MEDIA_ROUTE"
+          cp -r ../media-source/. "$MEDIA_ROUTE"
+          
+          # 4. Gestionar Git: Añadir, Commit y Push
+          # Nota: Al copiar archivos manualmente en lugar de usar 'git submodule update',
+          # tratamos los archivos como normales. Esto es más robusto para rutas cambiantes.
+          
+          git add "$MEDIA_ROUTE"
+          
+          # Verificar si hay cambios reales
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: sync media assets to $MEDIA_ROUTE"
+            git push https://${{ secrets.SYNC_TOKEN }}@github.com/TU_USUARIO/${{ matrix.target-repo }}.git HEAD:main
+            echo "✅ Actualización exitosa en ${{ matrix.target-repo }} (Ruta: $MEDIA_ROUTE)"
+          else
+            echo "⏭️ Sin cambios en ${{ matrix.target-repo }}"
+            git reset HEAD # Limpiar el stage si no hay cambios
+          fi
