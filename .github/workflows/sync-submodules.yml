@@ -75,6 +75,12 @@ jobs:
           # Verificar si hay cambios reales
           if ! git diff --staged --quiet; then
             git commit -m "chore: sync media assets to $MEDIA_ROUTE"
+
+            echo "Sincronizando con el remoto antes de push..."
+            git pull origin main --no-edit
+            
+            echo "Subiendo cambios..."
+
             git push https://${{ secrets.SYNC_TOKEN }}@github.com/israchaves/${{ matrix.target-repo }}.git HEAD:main
             echo "✅ Actualización exitosa en ${{ matrix.target-repo }} (Ruta: $MEDIA_ROUTE)"
           else
