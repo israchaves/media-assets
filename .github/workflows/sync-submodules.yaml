@@ -72,18 +72,30 @@ jobs:
           
           git add "$MEDIA_ROUTE"
           
-          # Verificar si hay cambios reales
+          # Verificar si hay cambios reales para commit
           if ! git diff --staged --quiet; then
             git commit -m "chore: sync media assets to $MEDIA_ROUTE"
-
-            echo "Sincronizando con el remoto antes de push..."
-            git pull origin main --rebase --no-edit
             
-            echo "Subiendo cambios..."
-
-            git push https://${{ secrets.SYNC_TOKEN }}@github.com/israchaves/${{ matrix.target-repo }}.git HEAD:main
-            echo "✅ Actualización exitosa en ${{ matrix.target-repo }} (Ruta: $MEDIA_ROUTE)"
+            # --- CAMBIO CLAVE: Determinar la rama destino según el repositorio ---
+            TARGET_BRANCH="main" # Por defecto asumimos main
+            
+            if [ "${{ matrix.target-repo }}" == "israchaves.github.io" ]; then
+              TARGET_BRANCH="master"
+              echo "🎯 Detectado github.io -> Usando rama: $TARGET_BRANCH"
+            else
+              echo "🎯 Detectado otro repo (lectures) -> Usando rama: $TARGET_BRANCH"
+            fi
+            
+            # Sincronizar con la rama correcta antes de push (usando rebase)
+            echo "Sincronizando con remoto ($TARGET_BRANCH)..."
+            git pull origin $TARGET_BRANCH --rebase --no-edit
+            
+            # Hacer push a la rama correcta
+            echo "Subiendo cambios a $TARGET_BRANCH..."
+            git push https://${{ secrets.SYNC_TOKEN }}@github.com/israchaves/${{ matrix.target-repo }}.git HEAD:$TARGET_BRANCH
+            
+            echo "✅ Actualización exitosa en ${{ matrix.target-repo }} (Rama: $TARGET_BRANCH)"
           else
             echo "⏭️ Sin cambios en ${{ matrix.target-repo }}"
-            git reset HEAD # Limpiar el stage si no hay cambios
+            git reset HEAD
           fi
